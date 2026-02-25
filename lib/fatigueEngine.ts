@@ -149,18 +149,56 @@ export function getBreakRecommendation(
   };
 }
 
+export function predictTimeToNextLevel(inputs: SessionInputs): {
+  minutesRemaining: number | null;
+  nextLevel: FatigueLevel;
+  currentScore: number;
+} {
+  const { score, level } = calculateFatigue(inputs);
+  const nextLevel: FatigueLevel = level === 'low' ? 'medium' : level === 'medium' ? 'high' : 'high';
+  const threshold = level === 'low' ? 36 : level === 'medium' ? 66 : null;
+
+  if (threshold === null || level === 'high') {
+    return { minutesRemaining: null, nextLevel: 'high', currentScore: score };
+  }
+
+  // Simulate forward in time by incrementing driving hours and break minutes
+  let simMinutes = 0;
+  const step = 5;
+  const maxSimMinutes = 180;
+
+  while (simMinutes < maxSimMinutes) {
+    simMinutes += step;
+    const simInputs: SessionInputs = {
+      ...inputs,
+      drivingHours: inputs.drivingHours + simMinutes / 60,
+      minutesSinceBreak: inputs.minutesSinceBreak + simMinutes,
+    };
+    const { score: simScore } = calculateFatigue(simInputs);
+    if (simScore >= threshold) {
+      return { minutesRemaining: simMinutes, nextLevel, currentScore: score };
+    }
+  }
+
+  return { minutesRemaining: null, nextLevel, currentScore: score };
+}
+
 export function generateRoute(deliveries: number, fatigueScore: number): {
-  stops: { id: number; label: string; priority: number; estimatedMinutes: number; risk: number }[];
+  stops: { id: number; label: string; priority: number; estimatedMinutes: number; risk: number; address: string }[];
   totalTime: number;
   breakAfterStop: number;
 } {
+  const streetNames = ['Oak St', 'Maple Ave', 'Cedar Rd', 'Pine Ln', 'Elm Dr', 'Birch Blvd', 'Willow Way', 'Ash Ct'];
   const stops = Array.from({ length: Math.min(deliveries, 8) }, (_, i) => {
     const risk = Math.random() * fatigueScore * 0.3;
     const priority = Math.floor(Math.random() * 3) + 1;
     const estimatedMinutes = Math.floor(10 + Math.random() * 20);
+    const houseNum = Math.floor(100 + Math.random() * 899);
+    const street = streetNames[i % streetNames.length];
     return {
       id: i + 1,
       label: `Delivery #${i + 1}`,
+      address: `${houseNum} ${street}`,
       priority,
       estimatedMinutes,
       risk: Math.round(risk),
@@ -174,3 +212,27 @@ export function generateRoute(deliveries: number, fatigueScore: number): {
 
   return { stops, totalTime, breakAfterStop };
 }
+
+export const SAFETY_TIPS: Record<FatigueLevel, string[]> = {
+  low: [
+    'Keep your mirrors checked every 5–8 seconds.',
+    'Stay hydrated — drink water every 30 minutes.',
+    'Maintain consistent following distance.',
+    'Use your turn signals early and predictably.',
+    'Keep the cabin well-ventilated to stay alert.',
+  ],
+  medium: [
+    'Reduce speed by 10–15% in current conditions.',
+    'Avoid phone use — even hands-free increases risk.',
+    'Plan your next break location now.',
+    'Keep windows slightly open to increase alertness.',
+    'If yawning repeatedly, stop as soon as it is safe.',
+  ],
+  high: [
+    'Pull over immediately when it is safe to do so.',
+    'Do not rely on caffeine — only rest resolves fatigue.',
+    'Alert your dispatcher or supervisor.',
+    'Turn on hazard lights if stopping roadside.',
+    'A 20-minute nap significantly restores alertness.',
+  ],
+};

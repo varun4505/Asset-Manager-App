@@ -19,13 +19,44 @@ import {
   Inter_500Medium,
   Inter_600SemiBold,
 } from "@expo-google-fonts/inter";
+import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back", headerShown: false }}>
+    <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="profile"
+        options={{
+          headerShown: true,
+          title: "Driver Profile",
+          presentation: "modal",
+          headerStyle: { backgroundColor: Colors.backgroundSecondary },
+          headerTintColor: Colors.text,
+          headerTitleStyle: {
+            fontFamily: "Rajdhani_700Bold",
+            fontSize: 18,
+            letterSpacing: 1,
+          },
+        }}
+      />
+      <Stack.Screen
+        name="tips"
+        options={{
+          headerShown: true,
+          title: "Safety Tips",
+          presentation: "modal",
+          headerStyle: { backgroundColor: Colors.backgroundSecondary },
+          headerTintColor: Colors.text,
+          headerTitleStyle: {
+            fontFamily: "Rajdhani_700Bold",
+            fontSize: 18,
+            letterSpacing: 1,
+          },
+        }}
+      />
     </Stack>
   );
 }

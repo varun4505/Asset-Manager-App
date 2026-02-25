@@ -20,13 +20,16 @@ function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
-
 function formatTime(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-function StatSummaryCard({ history }: { history: SessionRecord[] }) {
+function StatSummaryCard({ history, safetyScore, currentStreak }: {
+  history: SessionRecord[];
+  safetyScore: number;
+  currentStreak: number;
+}) {
   if (history.length === 0) return null;
 
   const avgScore = history.reduce((a, b) => a + b.score, 0) / history.length;
@@ -34,50 +37,77 @@ function StatSummaryCard({ history }: { history: SessionRecord[] }) {
   const totalDeliveries = history.reduce((a, b) => a + b.deliveriesCompleted, 0);
   const safeRatio = Math.round(((history.length - highRiskCount) / history.length) * 100);
 
-  const safeColor = safeRatio >= 80 ? Colors.safe : safeRatio >= 60 ? Colors.caution : Colors.danger;
+  const safeColor =
+    safetyScore >= 70 ? Colors.safe : safetyScore >= 40 ? Colors.caution : Colors.danger;
 
   return (
     <View style={styles.summaryCard}>
-      <Text style={styles.summaryTitle}>SESSION OVERVIEW</Text>
-      <View style={styles.summaryGrid}>
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: Colors.accent }]}>{history.length}</Text>
-          <Text style={styles.summaryLabel}>Total Sessions</Text>
+      <View style={styles.summaryTopRow}>
+        {/* Safety score ring */}
+        <View style={[styles.safetyRing, { borderColor: safeColor }]}>
+          <Text style={[styles.safetyRingValue, { color: safeColor }]}>{safetyScore}</Text>
+          <Text style={styles.safetyRingLabel}>SAFETY</Text>
         </View>
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: Colors.safe }]}>{totalDeliveries}</Text>
-          <Text style={styles.summaryLabel}>Deliveries</Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: Colors.danger }]}>{highRiskCount}</Text>
-          <Text style={styles.summaryLabel}>High Risk</Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: safeColor }]}>{safeRatio}%</Text>
-          <Text style={styles.summaryLabel}>Safe Rate</Text>
+        <View style={styles.summaryRightCol}>
+          <Text style={styles.summaryTitle}>PERFORMANCE OVERVIEW</Text>
+          <View style={styles.summaryGrid}>
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryValue, { color: Colors.accent }]}>{history.length}</Text>
+              <Text style={styles.summaryLabel}>Sessions</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryValue, { color: Colors.safe }]}>{totalDeliveries}</Text>
+              <Text style={styles.summaryLabel}>Deliveries</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryValue, { color: Colors.caution }]}>{currentStreak}</Text>
+              <Text style={styles.summaryLabel}>Streak</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryValue, { color: Colors.danger }]}>{highRiskCount}</Text>
+              <Text style={styles.summaryLabel}>High Risk</Text>
+            </View>
+          </View>
         </View>
       </View>
 
       <View style={styles.avgSection}>
-        <Text style={styles.avgLabel}>Average Fatigue Index</Text>
+        <Text style={styles.avgLabel}>Avg Fatigue Index</Text>
         <View style={styles.avgBar}>
           <View
             style={[
               styles.avgFill,
               {
                 width: `${avgScore}%`,
-                backgroundColor: avgScore > 65 ? Colors.danger : avgScore > 35 ? Colors.caution : Colors.safe,
+                backgroundColor:
+                  avgScore > 65 ? Colors.danger : avgScore > 35 ? Colors.caution : Colors.safe,
               },
             ]}
           />
         </View>
-        <Text style={[
-          styles.avgValue,
-          { color: avgScore > 65 ? Colors.danger : avgScore > 35 ? Colors.caution : Colors.safe },
-        ]}>
+        <Text
+          style={[
+            styles.avgValue,
+            {
+              color: avgScore > 65 ? Colors.danger : avgScore > 35 ? Colors.caution : Colors.safe,
+            },
+          ]}
+        >
           {Math.round(avgScore)}
         </Text>
       </View>
+
+      {currentStreak > 0 && (
+        <View style={styles.streakBanner}>
+          <Ionicons name="flame" size={16} color={Colors.caution} />
+          <Text style={[styles.streakText, { color: Colors.caution }]}>
+            {currentStreak} session{currentStreak !== 1 ? "s" : ""} without high fatigue
+          </Text>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakBadgeText}>STREAK</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -85,18 +115,18 @@ function StatSummaryCard({ history }: { history: SessionRecord[] }) {
 function TrendChart({ history }: { history: SessionRecord[] }) {
   if (history.length < 2) return null;
   const recent = history.slice(0, 7).reverse();
-  const maxScore = 100;
 
   return (
     <View style={styles.chartCard}>
       <Text style={styles.sectionTitle}>RECENT TREND</Text>
       <View style={styles.chartArea}>
-        {recent.map((s, i) => {
-          const barH = Math.max(8, (s.score / maxScore) * 100);
-          const color = s.level === "high" ? Colors.danger : s.level === "medium" ? Colors.caution : Colors.safe;
+        {recent.map((s) => {
+          const barH = Math.max(10, (s.score / 100) * 100);
+          const color =
+            s.level === "high" ? Colors.danger : s.level === "medium" ? Colors.caution : Colors.safe;
           return (
             <View key={s.id} style={styles.chartCol}>
-              <Text style={styles.chartBarVal}>{Math.round(s.score)}</Text>
+              <Text style={[styles.chartBarVal, { color }]}>{Math.round(s.score)}</Text>
               <View style={styles.chartBarContainer}>
                 <View style={[styles.chartBar, { height: barH, backgroundColor: color }]} />
               </View>
@@ -107,53 +137,70 @@ function TrendChart({ history }: { history: SessionRecord[] }) {
           );
         })}
       </View>
+      <View style={styles.chartLegend}>
+        {[
+          { color: Colors.safe, label: "Low" },
+          { color: Colors.caution, label: "Medium" },
+          { color: Colors.danger, label: "High" },
+        ].map((l) => (
+          <View key={l.label} style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: l.color }]} />
+            <Text style={styles.legendLabel}>{l.label}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
 function SessionCard({ record, index }: { record: SessionRecord; index: number }) {
   const levelColor =
-    record.level === "high" ? Colors.danger :
-    record.level === "medium" ? Colors.caution : Colors.safe;
+    record.level === "high"
+      ? Colors.danger
+      : record.level === "medium"
+      ? Colors.caution
+      : Colors.safe;
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 60).springify()}>
+    <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
       <View style={[styles.sessionCard, { borderLeftColor: levelColor, borderLeftWidth: 3 }]}>
         <View style={styles.sessionTop}>
-          <View style={styles.sessionDateBlock}>
+          <View>
             <Text style={styles.sessionDate}>{formatDate(record.date)}</Text>
             <Text style={styles.sessionTime}>{formatTime(record.date)}</Text>
           </View>
-          <View style={[styles.levelBadge, { backgroundColor: levelColor + "20", borderColor: levelColor + "50" }]}>
-            <Text style={[styles.levelBadgeText, { color: levelColor }]}>{record.level.toUpperCase()}</Text>
+          <View style={styles.sessionTopRight}>
+            <Text style={[styles.sessionScore, { color: levelColor }]}>
+              {Math.round(record.score)}
+            </Text>
+            <View
+              style={[
+                styles.levelBadge,
+                { backgroundColor: levelColor + "20", borderColor: levelColor + "50" },
+              ]}
+            >
+              <Text style={[styles.levelBadgeText, { color: levelColor }]}>
+                {record.level.toUpperCase()}
+              </Text>
+            </View>
           </View>
         </View>
         <View style={styles.sessionMetaRow}>
           <View style={styles.sessionMeta}>
-            <Ionicons name="speedometer-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.sessionMetaText}>{Math.round(record.score)} index</Text>
-          </View>
-          <View style={styles.sessionMeta}>
             <Ionicons name="bicycle-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.sessionMetaText}>{record.deliveriesCompleted} deliveries</Text>
+            <Text style={styles.sessionMetaText}>{record.deliveriesCompleted} stops</Text>
           </View>
           <View style={styles.sessionMeta}>
             <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
             <Text style={styles.sessionMetaText}>{record.durationMinutes} min</Text>
           </View>
-        </View>
-        <View style={styles.sessionDetails}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailKey}>Drive Hours</Text>
-            <Text style={styles.detailVal}>{record.inputs.drivingHours.toFixed(1)}h</Text>
+          <View style={styles.sessionMeta}>
+            <Ionicons name="sunny-outline" size={13} color={Colors.textMuted} />
+            <Text style={styles.sessionMetaText}>{record.inputs.weather}</Text>
           </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailKey}>Weather</Text>
-            <Text style={styles.detailVal}>{record.inputs.weather}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailKey}>Time of Day</Text>
-            <Text style={styles.detailVal}>{record.inputs.timeOfDay}</Text>
+          <View style={styles.sessionMeta}>
+            <Ionicons name="moon-outline" size={13} color={Colors.textMuted} />
+            <Text style={styles.sessionMetaText}>{record.inputs.timeOfDay}</Text>
           </View>
         </View>
       </View>
@@ -164,7 +211,7 @@ function SessionCard({ record, index }: { record: SessionRecord; index: number }
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const { history, clearHistory } = useFatigue();
+  const { history, clearHistory, safetyScore, currentStreak } = useFatigue();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const handleClear = () => {
@@ -172,26 +219,22 @@ export default function HistoryScreen() {
       clearHistory();
       return;
     }
-    Alert.alert(
-      "Clear History",
-      "This will permanently delete all session records.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete All",
-          style: "destructive",
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            clearHistory();
-          },
+    Alert.alert("Clear History", "This will permanently delete all session records.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete All",
+        style: "destructive",
+        onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          clearHistory();
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
     <ScrollView
-      style={[styles.container]}
+      style={styles.container}
       contentContainerStyle={[
         styles.content,
         { paddingTop: topPad + 12, paddingBottom: tabBarHeight + 20 },
@@ -210,22 +253,26 @@ export default function HistoryScreen() {
         )}
       </View>
 
-      <StatSummaryCard history={history} />
+      <StatSummaryCard
+        history={history}
+        safetyScore={safetyScore}
+        currentStreak={currentStreak}
+      />
       <TrendChart history={history} />
 
       {history.length > 0 ? (
         <>
-          <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>SESSION LOG</Text>
+          <Text style={styles.sectionTitle}>SESSION LOG</Text>
           {history.map((record, i) => (
             <SessionCard key={record.id} record={record} index={i} />
           ))}
         </>
       ) : (
         <View style={styles.emptyState}>
-          <Ionicons name="bar-chart-outline" size={48} color={Colors.textMuted} />
+          <Ionicons name="bar-chart-outline" size={52} color={Colors.textMuted} />
           <Text style={styles.emptyTitle}>No Sessions Yet</Text>
           <Text style={styles.emptySubtitle}>
-            Start a session from the Dashboard and end it to save your fatigue data here.
+            Start a session from the Dashboard and tap End to save your fatigue data here.
           </Text>
         </View>
       )}
@@ -271,36 +318,60 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: 14,
+    gap: 14,
   },
+  summaryTopRow: {
+    flexDirection: "row",
+    gap: 14,
+    alignItems: "center",
+  },
+  safetyRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.backgroundElevated,
+    flexShrink: 0,
+  },
+  safetyRingValue: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 26,
+    letterSpacing: -1,
+  },
+  safetyRingLabel: {
+    fontFamily: "Rajdhani_500Medium",
+    fontSize: 8,
+    color: Colors.textMuted,
+    letterSpacing: 1,
+  },
+  summaryRightCol: { flex: 1, gap: 8 },
   summaryTitle: {
     fontFamily: "Rajdhani_600SemiBold",
-    fontSize: 11,
+    fontSize: 10,
     color: Colors.textMuted,
     letterSpacing: 2,
-    marginBottom: 14,
   },
   summaryGrid: {
     flexDirection: "row",
-    marginBottom: 16,
     gap: 8,
   },
   summaryItem: {
     flex: 1,
     alignItems: "center",
     backgroundColor: Colors.backgroundElevated,
-    borderRadius: 10,
-    paddingVertical: 10,
+    borderRadius: 8,
+    paddingVertical: 7,
   },
   summaryValue: {
     fontFamily: "Rajdhani_700Bold",
-    fontSize: 24,
-    letterSpacing: -0.5,
+    fontSize: 20,
   },
   summaryLabel: {
     fontFamily: "Inter_400Regular",
-    fontSize: 10,
+    fontSize: 9,
     color: Colors.textMuted,
-    marginTop: 2,
     textAlign: "center",
   },
   avgSection: {
@@ -310,26 +381,50 @@ const styles = StyleSheet.create({
   },
   avgLabel: {
     fontFamily: "Inter_400Regular",
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textSecondary,
-    width: 110,
+    width: 100,
   },
   avgBar: {
     flex: 1,
-    height: 8,
+    height: 6,
     backgroundColor: Colors.border,
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: "hidden",
   },
-  avgFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
+  avgFill: { height: "100%", borderRadius: 3 },
   avgValue: {
     fontFamily: "Rajdhani_700Bold",
-    fontSize: 16,
-    width: 30,
+    fontSize: 14,
+    width: 28,
     textAlign: "right",
+  },
+  streakBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.cautionDim,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.caution + "30",
+  },
+  streakText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    flex: 1,
+  },
+  streakBadge: {
+    backgroundColor: Colors.caution,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  streakBadgeText: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 9,
+    color: Colors.background,
+    letterSpacing: 1,
   },
   chartCard: {
     backgroundColor: Colors.backgroundCard,
@@ -344,13 +439,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textMuted,
     letterSpacing: 2,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   chartArea: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 6,
-    height: 130,
+    height: 120,
+    marginBottom: 12,
   },
   chartCol: {
     flex: 1,
@@ -360,9 +456,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   chartBarVal: {
-    fontFamily: "Rajdhani_500Medium",
+    fontFamily: "Rajdhani_600SemiBold",
     fontSize: 10,
-    color: Colors.textMuted,
   },
   chartBarContainer: {
     flex: 1,
@@ -370,14 +465,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end",
   },
-  chartBar: {
-    width: "80%",
-    borderRadius: 4,
-    minHeight: 8,
-  },
+  chartBar: { width: "80%", borderRadius: 4, minHeight: 10 },
   chartBarLabel: {
     fontFamily: "Inter_400Regular",
     fontSize: 10,
+    color: Colors.textMuted,
+  },
+  chartLegend: {
+    flexDirection: "row",
+    gap: 14,
+    justifyContent: "center",
+  },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
     color: Colors.textMuted,
   },
   sessionCard: {
@@ -394,7 +497,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 10,
   },
-  sessionDateBlock: {},
   sessionDate: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
@@ -406,58 +508,36 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 1,
   },
+  sessionTopRight: { alignItems: "flex-end", gap: 4 },
+  sessionScore: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 28,
+    letterSpacing: -1,
+  },
   levelBadge: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
     borderWidth: 1,
   },
   levelBadgeText: {
     fontFamily: "Rajdhani_700Bold",
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 1,
   },
   sessionMetaRow: {
     flexDirection: "row",
-    gap: 14,
-    marginBottom: 10,
+    gap: 12,
+    flexWrap: "wrap",
   },
-  sessionMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
+  sessionMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
   sessionMetaText: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     color: Colors.textSecondary,
-  },
-  sessionDetails: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: 10,
-    gap: 4,
-  },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  detailKey: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: Colors.textMuted,
-  },
-  detailVal: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    color: Colors.textSecondary,
     textTransform: "capitalize",
   },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 12,
-  },
+  emptyState: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyTitle: {
     fontFamily: "Rajdhani_600SemiBold",
     fontSize: 20,
