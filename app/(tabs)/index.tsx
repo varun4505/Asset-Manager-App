@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,10 @@ import {
   ScrollView,
   Pressable,
   Platform,
+  Modal,
+  Alert,
+  TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -148,7 +152,10 @@ function LiveTimer({ seconds }: { seconds: number }) {
 }
 
 function QuickActions() {
-  const { isSessionActive, incrementDelivery, startBreak, endBreak, activeBreak, startSession, endSession, saveSession } = useFatigue();
+  const { isSessionActive, incrementDelivery, startBreak, endBreak, activeBreak, startSession, endSession, saveSessionWithNotes } = useFatigue();
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [sessionNote, setSessionNote] = useState("");
+  const [sessionRate, setSessionRate] = useState("");
 
   const handleDelivery = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -159,95 +166,144 @@ function QuickActions() {
     if (activeBreak) endBreak();
     else startBreak();
   };
-  const handleSession = async () => {
+  const handleSession = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     if (isSessionActive) {
-      await saveSession();
-      endSession();
+      setSessionNote("");
+      setSessionRate("");
+      setShowNotesModal(true);
     } else {
       startSession();
     }
   };
 
+  const confirmEndSession = async () => {
+    setShowNotesModal(false);
+    const rate = parseFloat(sessionRate) || undefined;
+    await saveSessionWithNotes(sessionNote.trim(), rate);
+    endSession();
+  };
+
   return (
-    <View style={styles.quickActions}>
-      <Pressable
-        onPress={handleDelivery}
-        disabled={!isSessionActive}
-        style={({ pressed }) => [
-          styles.quickBtn,
-          { backgroundColor: Colors.safe + "15", borderColor: Colors.safe + "40" },
-          pressed && { opacity: 0.7 },
-          !isSessionActive && { opacity: 0.35 },
-        ]}
-      >
-        <Ionicons name="add-circle" size={22} color={Colors.safe} />
-        <Text style={[styles.quickBtnText, { color: Colors.safe }]}>Delivery</Text>
-        <Text style={styles.quickBtnSub}>Log Stop</Text>
-      </Pressable>
-
-      <Pressable
-        onPress={handleBreak}
-        disabled={!isSessionActive}
-        style={({ pressed }) => [
-          styles.quickBtn,
-          {
-            backgroundColor: activeBreak ? Colors.safe + "15" : Colors.caution + "15",
-            borderColor: activeBreak ? Colors.safe + "40" : Colors.caution + "40",
-          },
-          pressed && { opacity: 0.7 },
-          !isSessionActive && { opacity: 0.35 },
-        ]}
-      >
-        <Ionicons
-          name={activeBreak ? "cafe" : "pause-circle"}
-          size={22}
-          color={activeBreak ? Colors.safe : Colors.caution}
-        />
-        <Text
-          style={[
-            styles.quickBtnText,
-            { color: activeBreak ? Colors.safe : Colors.caution },
+    <>
+      <View style={styles.quickActions}>
+        <Pressable
+          onPress={handleDelivery}
+          disabled={!isSessionActive}
+          style={({ pressed }) => [
+            styles.quickBtn,
+            { backgroundColor: Colors.safe + "15", borderColor: Colors.safe + "40" },
+            pressed && { opacity: 0.7 },
+            !isSessionActive && { opacity: 0.35 },
           ]}
         >
-          {activeBreak ? "End Break" : "Break"}
-        </Text>
-        <Text style={styles.quickBtnSub}>
-          {activeBreak ? "Back to route" : "Rest now"}
-        </Text>
-      </Pressable>
+          <Ionicons name="add-circle" size={22} color={Colors.safe} />
+          <Text style={[styles.quickBtnText, { color: Colors.safe }]}>Delivery</Text>
+          <Text style={styles.quickBtnSub}>Log Stop</Text>
+        </Pressable>
 
-      <Pressable
-        onPress={handleSession}
-        style={({ pressed }) => [
-          styles.quickBtn,
-          {
-            backgroundColor: isSessionActive
-              ? Colors.danger + "15"
-              : Colors.accent + "15",
-            borderColor: isSessionActive
-              ? Colors.danger + "40"
-              : Colors.accent + "40",
-          },
-          pressed && { opacity: 0.7 },
-        ]}
-      >
-        <Ionicons
-          name={isSessionActive ? "stop-circle" : "play-circle"}
-          size={22}
-          color={isSessionActive ? Colors.danger : Colors.accent}
-        />
-        <Text
-          style={[
-            styles.quickBtnText,
-            { color: isSessionActive ? Colors.danger : Colors.accent },
+        <Pressable
+          onPress={handleBreak}
+          disabled={!isSessionActive}
+          style={({ pressed }) => [
+            styles.quickBtn,
+            {
+              backgroundColor: activeBreak ? Colors.safe + "15" : Colors.caution + "15",
+              borderColor: activeBreak ? Colors.safe + "40" : Colors.caution + "40",
+            },
+            pressed && { opacity: 0.7 },
+            !isSessionActive && { opacity: 0.35 },
           ]}
         >
-          {isSessionActive ? "End" : "Start"}
-        </Text>
-        <Text style={styles.quickBtnSub}>Session</Text>
-      </Pressable>
-    </View>
+          <Ionicons
+            name={activeBreak ? "cafe" : "pause-circle"}
+            size={22}
+            color={activeBreak ? Colors.safe : Colors.caution}
+          />
+          <Text style={[styles.quickBtnText, { color: activeBreak ? Colors.safe : Colors.caution }]}>
+            {activeBreak ? "End Break" : "Break"}
+          </Text>
+          <Text style={styles.quickBtnSub}>
+            {activeBreak ? "Back to route" : "Rest now"}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={handleSession}
+          style={({ pressed }) => [
+            styles.quickBtn,
+            {
+              backgroundColor: isSessionActive ? Colors.danger + "15" : Colors.accent + "15",
+              borderColor: isSessionActive ? Colors.danger + "40" : Colors.accent + "40",
+            },
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <Ionicons
+            name={isSessionActive ? "stop-circle" : "play-circle"}
+            size={22}
+            color={isSessionActive ? Colors.danger : Colors.accent}
+          />
+          <Text style={[styles.quickBtnText, { color: isSessionActive ? Colors.danger : Colors.accent }]}>
+            {isSessionActive ? "End" : "Start"}
+          </Text>
+          <Text style={styles.quickBtnSub}>Session</Text>
+        </Pressable>
+      </View>
+
+      {/* Session Notes Modal */}
+      <Modal visible={showNotesModal} transparent animationType="slide">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.notesOverlay}
+        >
+          <View style={styles.notesModal}>
+            <View style={styles.notesHandle} />
+            <Text style={styles.notesTitle}>END SESSION</Text>
+            <Text style={styles.notesSub}>Add a note before saving this session</Text>
+
+            <TextInput
+              value={sessionNote}
+              onChangeText={setSessionNote}
+              placeholder="How did the session go? (optional)"
+              placeholderTextColor={Colors.textMuted}
+              style={styles.notesInput}
+              multiline
+              numberOfLines={3}
+              maxLength={200}
+            />
+
+            <View style={styles.notesRateRow}>
+              <Text style={styles.notesRateLabel}>Earnings rate (₹/delivery)</Text>
+              <View style={styles.notesRateBox}>
+                <Ionicons name="cash-outline" size={14} color={Colors.accent} />
+                <TextInput
+                  value={sessionRate}
+                  onChangeText={setSessionRate}
+                  placeholder="50"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="decimal-pad"
+                  style={styles.notesRateInput}
+                />
+              </View>
+            </View>
+
+            <View style={styles.notesBtns}>
+              <Pressable
+                onPress={() => setShowNotesModal(false)}
+                style={styles.notesCancelBtn}
+              >
+                <Text style={styles.notesCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={confirmEndSession} style={styles.notesSaveBtn}>
+                <Ionicons name="checkmark-circle" size={18} color={Colors.background} />
+                <Text style={styles.notesSaveText}>Save Session</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
   );
 }
 
@@ -294,6 +350,185 @@ function PredictionCard({ score, level, session }: { score: number; level: strin
   );
 }
 
+// ─── SOS Panel ───────────────────────────────────────────────────────────────
+
+function SOSPanel() {
+  const { saveSession, endSession, isSessionActive } = useFatigue();
+  const [showModal, setShowModal] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+  const [confirmed, setConfirmed] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startCountdown = useCallback(() => {
+    setShowModal(true);
+    setCountdown(3);
+    setConfirmed(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          setConfirmed(true);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  const cancel = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setShowModal(false);
+    setConfirmed(false);
+    setCountdown(3);
+  }, []);
+
+  const confirm = useCallback(async () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setShowModal(false);
+    if (isSessionActive) {
+      await saveSession();
+      endSession();
+    }
+    Alert.alert(
+      "🚨 Emergency Stop Logged",
+      "Your session has been saved and flagged as an emergency stop. Please rest before continuing.",
+      [{ text: "OK" }]
+    );
+  }, [isSessionActive, saveSession, endSession]);
+
+  return (
+    <>
+      <Pressable
+        onPress={startCountdown}
+        style={({ pressed }) => [styles.sosBtn, pressed && { opacity: 0.85 }]}
+      >
+        <Ionicons name="alert-circle" size={22} color="#fff" />
+        <View>
+          <Text style={styles.sosBtnTitle}>EMERGENCY STOP</Text>
+          <Text style={styles.sosBtnSub}>Tap to log SOS & end session</Text>
+        </View>
+      </Pressable>
+
+      <Modal visible={showModal} transparent animationType="fade">
+        <View style={styles.sosOverlay}>
+          <View style={styles.sosModal}>
+            {!confirmed ? (
+              <>
+                <Ionicons name="warning" size={40} color={Colors.danger} />
+                <Text style={styles.sosModalTitle}>EMERGENCY STOP</Text>
+                <Text style={styles.sosModalBody}>
+                  This will end your session and log an emergency stop. Confirming in...
+                </Text>
+                <Text style={styles.sosCountdown}>{countdown}</Text>
+                <View style={styles.sosModalBtns}>
+                  <Pressable onPress={cancel} style={styles.sosCancelBtn}>
+                    <Text style={styles.sosCancelText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable onPress={confirm} style={styles.sosConfirmBtn}>
+                    <Text style={styles.sosConfirmText}>Confirm Now</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <Ionicons name="alert-circle" size={40} color={Colors.danger} />
+                <Text style={styles.sosModalTitle}>STOP CONFIRMED</Text>
+                <Text style={styles.sosModalBody}>
+                  Session has been saved and flagged as emergency.
+                </Text>
+                <Pressable onPress={confirm} style={[styles.sosConfirmBtn, { width: "100%" }]}>
+                  <Text style={styles.sosConfirmText}>OK, I'll rest now</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
+// ─── Fatigue Heatmap ─────────────────────────────────────────────────────────
+
+function FatigueHeatmap() {
+  const { history } = useFatigue();
+
+  // Build 24-hour avg fatigue array from history
+  const hourData = Array.from({ length: 24 }, (_, h) => {
+    const sessions = history.filter((s) => {
+      const d = new Date(s.date);
+      return d.getHours() === h;
+    });
+    if (sessions.length === 0) return null;
+    return sessions.reduce((acc, s) => acc + s.score, 0) / sessions.length;
+  });
+
+  const hasData = hourData.some((v) => v !== null);
+
+  const cellColor = (val: number | null): string => {
+    if (val === null) return Colors.backgroundElevated;
+    if (val <= 35) return Colors.safe + "CC";
+    if (val <= 65) return Colors.caution + "CC";
+    return Colors.danger + "CC";
+  };
+
+  const hourLabel = (h: number) => {
+    if (h === 0) return "12a";
+    if (h === 12) return "12p";
+    return h < 12 ? `${h}a` : `${h - 12}p`;
+  };
+
+  if (!hasData) return null;
+
+  const topRow = hourData.slice(0, 12);
+  const botRow = hourData.slice(12, 24);
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>YOUR PEAK RISK HOURS</Text>
+      <View style={styles.heatmapCard}>
+        <View style={styles.heatmapRow}>
+          {topRow.map((val, i) => (
+            <View key={i} style={styles.heatmapCell}>
+              <View style={[styles.heatmapDot, { backgroundColor: cellColor(val) }]} />
+              <Text style={styles.heatmapHour}>{hourLabel(i)}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.heatmapRow}>
+          {botRow.map((val, i) => (
+            <View key={i + 12} style={styles.heatmapCell}>
+              <View style={[styles.heatmapDot, { backgroundColor: cellColor(val) }]} />
+              <Text style={styles.heatmapHour}>{hourLabel(i + 12)}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.heatmapLegend}>
+          <View style={styles.heatmapLegendItem}>
+            <View style={[styles.heatmapLegendDot, { backgroundColor: Colors.safe }]} />
+            <Text style={styles.heatmapLegendText}>Safe</Text>
+          </View>
+          <View style={styles.heatmapLegendItem}>
+            <View style={[styles.heatmapLegendDot, { backgroundColor: Colors.caution }]} />
+            <Text style={styles.heatmapLegendText}>Caution</Text>
+          </View>
+          <View style={styles.heatmapLegendItem}>
+            <View style={[styles.heatmapLegendDot, { backgroundColor: Colors.danger }]} />
+            <Text style={styles.heatmapLegendText}>High risk</Text>
+          </View>
+          <View style={styles.heatmapLegendItem}>
+            <View style={[styles.heatmapLegendDot, { backgroundColor: Colors.backgroundElevated }]} />
+            <Text style={styles.heatmapLegendText}>No data</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+
 function BreakdownBar({ label, value, color }: { label: string; value: number; color: string }) {
   const width = useSharedValue(0);
   useEffect(() => {
@@ -322,6 +557,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const {
+
     fatigueScore,
     fatigueLevel,
     breakdown,
@@ -368,6 +604,8 @@ export default function DashboardScreen() {
           <Ionicons name="person-circle-outline" size={28} color={Colors.accent} />
         </Pressable>
       </View>
+
+
 
       {/* Session bar */}
       {isSessionActive && (
@@ -446,6 +684,13 @@ export default function DashboardScreen() {
         <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
       </Pressable>
 
+      {/* SOS – only shown when session is active at HIGH fatigue */}
+      {isSessionActive && fatigueLevel === "high" && (
+        <View style={styles.section}>
+          <SOSPanel />
+        </View>
+      )}
+
       {/* Breakdown */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>FATIGUE BREAKDOWN</Text>
@@ -482,6 +727,9 @@ export default function DashboardScreen() {
           />
         </View>
       </View>
+
+      {/* Heatmap */}
+      <FatigueHeatmap />
 
       {/* Risk guide */}
       <View style={styles.section}>
@@ -851,5 +1099,293 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     lineHeight: 17,
+  },
+
+  // SOS Button
+  sosBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: Colors.danger,
+    borderRadius: 16,
+    padding: 16,
+  },
+  sosBtnTitle: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 16,
+    color: "#fff",
+    letterSpacing: 1.5,
+  },
+  sosBtnSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 1,
+  },
+
+  // SOS Modal
+  sosOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  sosModal: {
+    backgroundColor: Colors.backgroundCard,
+    borderRadius: 20,
+    padding: 28,
+    width: "100%",
+    alignItems: "center",
+    gap: 14,
+    borderWidth: 1,
+    borderColor: Colors.danger + "60",
+  },
+  sosModalTitle: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 22,
+    color: Colors.danger,
+    letterSpacing: 2,
+  },
+  sosModalBody: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  sosCountdown: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 64,
+    color: Colors.danger,
+    letterSpacing: -2,
+  },
+  sosModalBtns: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+  },
+  sosCancelBtn: {
+    flex: 1,
+    backgroundColor: Colors.backgroundElevated,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sosCancelText: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 15,
+    color: Colors.text,
+  },
+  sosConfirmBtn: {
+    flex: 1,
+    backgroundColor: Colors.danger,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  sosConfirmText: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 15,
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
+
+  // Heatmap
+  heatmapCard: {
+    backgroundColor: Colors.backgroundCard,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 10,
+  },
+  heatmapRow: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  heatmapCell: {
+    flex: 1,
+    alignItems: "center",
+    gap: 3,
+  },
+  heatmapDot: {
+    width: "100%",
+    height: 18,
+    borderRadius: 4,
+    minWidth: 16,
+  },
+  heatmapHour: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 8,
+    color: Colors.textMuted,
+  },
+  heatmapLegend: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 14,
+    marginTop: 4,
+  },
+  heatmapLegendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  heatmapLegendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+  },
+  heatmapLegendText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+
+  // Session Notes Modal
+  notesOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  notesModal: {
+    backgroundColor: Colors.backgroundCard,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 36,
+    gap: 14,
+    borderTopWidth: 1,
+    borderColor: Colors.border,
+  },
+  notesHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center",
+    marginBottom: 4,
+  },
+  notesTitle: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 20,
+    color: Colors.text,
+    letterSpacing: 2,
+    textAlign: "center",
+  },
+  notesSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    marginTop: -8,
+  },
+  notesInput: {
+    backgroundColor: Colors.backgroundElevated,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 14,
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    color: Colors.text,
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  notesRateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  notesRateLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
+  notesRateBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.backgroundElevated,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    width: 100,
+  },
+  notesRateInput: {
+    flex: 1,
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 16,
+    color: Colors.text,
+  },
+  notesBtns: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  notesCancelBtn: {
+    flex: 1,
+    backgroundColor: Colors.backgroundElevated,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  notesCancelText: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 15,
+    color: Colors.text,
+  },
+  notesSaveBtn: {
+    flex: 2,
+    backgroundColor: Colors.accent,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  notesSaveText: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 15,
+    color: Colors.background,
+    letterSpacing: 0.5,
+  },
+
+  // Customer mode switcher
+  switcherCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(168,85,247,0.12)",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#A855F740",
+    marginBottom: 16,
+  },
+  switcherLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  switcherEmoji: { fontSize: 26 },
+  switcherTitle: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 16,
+    color: Colors.text,
+    letterSpacing: 0.3,
+  },
+  switcherSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 1,
   },
 });

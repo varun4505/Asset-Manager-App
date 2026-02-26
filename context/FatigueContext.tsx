@@ -1,16 +1,10 @@
 import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { calculateFatigue, SessionInputs, FatigueLevel, WeatherCondition, TimeOfDay } from '@/lib/fatigueEngine';
+import { calculateFatigue, SessionInputs, FatigueLevel, WeatherCondition, TimeOfDay, SessionRecord } from '@/lib/fatigueEngine';
 
-export interface SessionRecord {
-  id: string;
-  date: string;
-  inputs: SessionInputs;
-  score: number;
-  level: FatigueLevel;
-  deliveriesCompleted: number;
-  durationMinutes: number;
-}
+export type { SessionRecord };
+
+
 
 export interface DriverProfile {
   name: string;
@@ -27,6 +21,7 @@ interface FatigueContextValue {
   breakdown: Record<string, number>;
   history: SessionRecord[];
   saveSession: () => Promise<void>;
+  saveSessionWithNotes: (notes: string, earningsRate?: number) => Promise<void>;
   clearHistory: () => Promise<void>;
   activeBreak: boolean;
   breakStartTime: number | null;
@@ -163,7 +158,7 @@ export function FatigueProvider({ children }: { children: ReactNode }) {
     setSession(prev => ({ ...prev, ...updates }));
   }, []);
 
-  const saveSession = useCallback(async () => {
+  const saveSession = useCallback(async (notes?: string, earningsRate?: number) => {
     const record: SessionRecord = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
@@ -174,11 +169,17 @@ export function FatigueProvider({ children }: { children: ReactNode }) {
       durationMinutes: sessionStartTime
         ? Math.floor((Date.now() - sessionStartTime) / 60000)
         : Math.floor(session.drivingHours * 60),
+      notes,
+      earningsRate,
     };
     const updated = [record, ...history].slice(0, 50);
     setHistory(updated);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }, [session, score, level, history, sessionStartTime]);
+
+  const saveSessionWithNotes = useCallback(async (notes: string, earningsRate?: number) => {
+    return saveSession(notes, earningsRate);
+  }, [saveSession]);
 
   const clearHistory = useCallback(async () => {
     setHistory([]);
@@ -238,6 +239,7 @@ export function FatigueProvider({ children }: { children: ReactNode }) {
     breakdown,
     history,
     saveSession,
+    saveSessionWithNotes,
     clearHistory,
     activeBreak,
     breakStartTime,
@@ -253,7 +255,7 @@ export function FatigueProvider({ children }: { children: ReactNode }) {
     currentStreak,
     profile,
     updateProfile,
-  }), [session, updateSession, score, level, breakdown, history, saveSession, clearHistory, activeBreak, breakStartTime, startBreak, endBreak, isSessionActive, sessionStartTime, sessionElapsedSeconds, startSession, endSession, incrementDelivery, safetyScore, currentStreak, profile, updateProfile]);
+  }), [session, updateSession, score, level, breakdown, history, saveSession, saveSessionWithNotes, clearHistory, activeBreak, breakStartTime, startBreak, endBreak, isSessionActive, sessionStartTime, sessionElapsedSeconds, startSession, endSession, incrementDelivery, safetyScore, currentStreak, profile, updateProfile]);
 
   return <FatigueContext.Provider value={value}>{children}</FatigueContext.Provider>;
 }

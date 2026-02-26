@@ -161,6 +161,10 @@ function SessionCard({ record, index }: { record: SessionRecord; index: number }
       ? Colors.caution
       : Colors.safe;
 
+  const earnings = record.earningsRate
+    ? record.deliveriesCompleted * record.earningsRate
+    : null;
+
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
       <View style={[styles.sessionCard, { borderLeftColor: levelColor, borderLeftWidth: 3 }]}>
@@ -198,11 +202,21 @@ function SessionCard({ record, index }: { record: SessionRecord; index: number }
             <Ionicons name="sunny-outline" size={13} color={Colors.textMuted} />
             <Text style={styles.sessionMetaText}>{record.inputs.weather}</Text>
           </View>
-          <View style={styles.sessionMeta}>
-            <Ionicons name="moon-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.sessionMetaText}>{record.inputs.timeOfDay}</Text>
-          </View>
+          {earnings !== null && (
+            <View style={styles.sessionMeta}>
+              <Ionicons name="cash-outline" size={13} color={Colors.safe} />
+              <Text style={[styles.sessionMetaText, { color: Colors.safe }]}>
+                ₹{earnings.toFixed(0)}
+              </Text>
+            </View>
+          )}
         </View>
+        {record.notes ? (
+          <View style={styles.sessionNoteRow}>
+            <Ionicons name="chatbubble-outline" size={11} color={Colors.accent} />
+            <Text style={styles.sessionNoteText} numberOfLines={2}>{record.notes}</Text>
+          </View>
+        ) : null}
       </View>
     </Animated.View>
   );
@@ -213,6 +227,18 @@ export default function HistoryScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { history, clearHistory, safetyScore, currentStreak } = useFatigue();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  type FilterLevel = "all" | "low" | "medium" | "high";
+  const [filter, setFilter] = useState<FilterLevel>("all");
+
+  const filtered = filter === "all" ? history : history.filter((s) => s.level === filter);
+
+  const FILTERS: { label: string; value: FilterLevel; color: string }[] = [
+    { label: "All", value: "all", color: Colors.accent },
+    { label: "Low", value: "low", color: Colors.safe },
+    { label: "Medium", value: "medium", color: Colors.caution },
+    { label: "High", value: "high", color: Colors.danger },
+  ];
 
   const handleClear = () => {
     if (Platform.OS === "web") {
@@ -260,19 +286,45 @@ export default function HistoryScreen() {
       />
       <TrendChart history={history} />
 
-      {history.length > 0 ? (
+      {/* Filter tabs */}
+      {history.length > 0 && (
+        <View style={styles.filterRow}>
+          {FILTERS.map((f) => {
+            const active = filter === f.value;
+            return (
+              <Pressable
+                key={f.value}
+                onPress={() => setFilter(f.value)}
+                style={[
+                  styles.filterBtn,
+                  active && { backgroundColor: f.color + "20", borderColor: f.color + "60" },
+                ]}
+              >
+                <Text style={[styles.filterBtnText, { color: active ? f.color : Colors.textMuted }]}>
+                  {f.label}
+                  {f.value !== "all" && ` (${history.filter((s) => s.level === f.value).length})`}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
+      {filtered.length > 0 ? (
         <>
           <Text style={styles.sectionTitle}>SESSION LOG</Text>
-          {history.map((record, i) => (
+          {filtered.map((record, i) => (
             <SessionCard key={record.id} record={record} index={i} />
           ))}
         </>
       ) : (
         <View style={styles.emptyState}>
           <Ionicons name="bar-chart-outline" size={52} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>No Sessions Yet</Text>
+          <Text style={styles.emptyTitle}>{history.length === 0 ? "No Sessions Yet" : "No matches"}</Text>
           <Text style={styles.emptySubtitle}>
-            Start a session from the Dashboard and tap End to save your fatigue data here.
+            {history.length === 0
+              ? "Start a session from the Dashboard and tap End to save your fatigue data here."
+              : `No ${filter} fatigue sessions recorded.`}
           </Text>
         </View>
       )}
@@ -552,4 +604,40 @@ const styles = StyleSheet.create({
     maxWidth: 260,
     lineHeight: 20,
   },
+  sessionNoteRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: Colors.accentGlow ?? Colors.backgroundElevated,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  sessionNoteText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textSecondary,
+    flex: 1,
+    lineHeight: 17,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 14,
+  },
+  filterBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: Colors.backgroundCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterBtnText: {
+    fontFamily: "Rajdhani_600SemiBold",
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
 });
+

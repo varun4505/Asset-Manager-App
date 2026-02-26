@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+import { useRouter } from "expo-router";
 import { useFatigue } from "@/context/FatigueContext";
 
 const VEHICLES = [
@@ -23,6 +24,7 @@ const VEHICLES = [
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile, updateProfile, safetyScore, currentStreak, history } = useFatigue();
 
@@ -196,6 +198,17 @@ export default function ProfileScreen() {
         <Ionicons name={saved ? "checkmark-circle" : "save-outline"} size={18} color={Colors.background} />
         <Text style={styles.saveBtnText}>{saved ? "Saved!" : "Save Profile"}</Text>
       </Pressable>
+
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          router.replace("/");
+        }}
+        style={styles.switchRoleBtn}
+      >
+        <Ionicons name="swap-horizontal" size={18} color={Colors.accent} />
+        <Text style={styles.switchRoleText}>Change Role / App</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -365,5 +378,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.background,
     letterSpacing: 1,
+  },
+  switchRoleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 16,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.backgroundCard,
+  },
+  switchRoleText: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 14,
+    color: Colors.accent,
   },
 });

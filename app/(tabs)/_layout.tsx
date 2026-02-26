@@ -26,6 +26,14 @@ function NativeTabLayout() {
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
         <Label>History</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="earnings">
+        <Icon sf={{ default: "banknote", selected: "banknote.fill" }} />
+        <Label>Earnings</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="deliveries">
+        <Icon sf={{ default: "bicycle", selected: "bicycle.circle.fill" }} />
+        <Label>Deliveries</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -115,6 +123,24 @@ function ClassicTabLayout() {
           title: "History",
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? "bar-chart" : "bar-chart-outline"} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="earnings"
+        options={{
+          title: "Earnings",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? "cash" : "cash-outline"} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="deliveries"
+        options={{
+          title: "Deliveries",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? "bicycle" : "bicycle-outline"} focused={focused} />
           ),
         }}
       />

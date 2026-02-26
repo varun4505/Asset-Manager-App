@@ -7,6 +7,9 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { FatigueProvider } from "@/context/FatigueContext";
+import { CustomerProvider } from "@/context/CustomerContext";
+import { DeliveryProvider } from "@/context/DeliveryContext";
+import { AdminProvider } from "@/context/AdminContext";
 import {
   useFonts,
   Rajdhani_400Regular,
@@ -26,7 +29,10 @@ SplashScreen.preventAutoHideAsync();
 function RootLayoutNav() {
   return (
     <Stack>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(customer)" options={{ headerShown: false }} />
+      <Stack.Screen name="(admin)" options={{ headerShown: false }} />
       <Stack.Screen
         name="profile"
         options={{
@@ -38,7 +44,6 @@ function RootLayoutNav() {
           headerTitleStyle: {
             fontFamily: "Rajdhani_700Bold",
             fontSize: 18,
-            letterSpacing: 1,
           },
         }}
       />
@@ -53,7 +58,6 @@ function RootLayoutNav() {
           headerTitleStyle: {
             fontFamily: "Rajdhani_700Bold",
             fontSize: 18,
-            letterSpacing: 1,
           },
         }}
       />
@@ -84,11 +88,17 @@ export default function RootLayout() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <FatigueProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <KeyboardProvider>
-              <RootLayoutNav />
-            </KeyboardProvider>
-          </GestureHandlerRootView>
+          <CustomerProvider>
+            <DeliveryProvider>
+              <AdminProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </AdminProvider>
+            </DeliveryProvider>
+          </CustomerProvider>
         </FatigueProvider>
       </QueryClientProvider>
     </ErrorBoundary>

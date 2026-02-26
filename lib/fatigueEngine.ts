@@ -9,6 +9,8 @@ export interface SessionInputs {
   weather: WeatherCondition;
   timeOfDay: TimeOfDay;
   hungerLevel: number;
+  shiftStartHour?: number;  // 0–23
+  shiftDurationHours?: number; // planned shift length
 }
 
 function trapezoidMF(x: number, a: number, b: number, c: number, d: number): number {
@@ -64,6 +66,18 @@ function timeOfDayFactor(time: TimeOfDay): number {
     case 'evening': return 20;
     case 'night': return 35;
   }
+}
+
+export interface SessionRecord {
+  id: string;
+  date: string;
+  inputs: SessionInputs;
+  score: number;
+  level: FatigueLevel;
+  deliveriesCompleted: number;
+  durationMinutes: number;
+  notes?: string;
+  earningsRate?: number;
 }
 
 export function calculateFatigue(inputs: SessionInputs): {

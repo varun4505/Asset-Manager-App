@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Platform,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -242,6 +243,95 @@ function DeliveryCounter() {
   );
 }
 
+function ShiftPlanner() {
+  const { session, updateSession, isSessionActive, sessionStartTime } = useFatigue();
+  const [shiftHours, setShiftHours] = useState(String(session.shiftDurationHours ?? 8));
+
+  const planned = parseFloat(shiftHours) || 8;
+
+  // derive elapsed hours from sessionStartTime if active, else from drivingHours
+  const elapsedHours = isSessionActive && sessionStartTime
+    ? (Date.now() - sessionStartTime) / 3600000
+    : session.drivingHours;
+
+  const remainingHours = Math.max(0, planned - elapsedHours);
+  const pct = Math.min(1, elapsedHours / planned);
+  const isOvertime = elapsedHours > planned;
+  const isWarning = !isOvertime && remainingHours < 1;
+
+  const barColor = isOvertime ? Colors.danger : isWarning ? Colors.caution : Colors.safe;
+
+  const formatHours = (h: number) => {
+    const hh = Math.floor(h);
+    const mm = Math.round((h - hh) * 60);
+    if (hh === 0) return `${mm}m`;
+    if (mm === 0) return `${hh}h`;
+    return `${hh}h ${mm}m`;
+  };
+
+  const handleApply = () => {
+    const hrs = parseFloat(shiftHours) || 8;
+    Haptics.selectionAsync();
+    updateSession({ shiftDurationHours: hrs });
+  };
+
+  return (
+    <View style={styles.shiftCard}>
+      <View style={styles.shiftHeader}>
+        <View style={styles.shiftTitleRow}>
+          <Ionicons name="calendar-outline" size={16} color={Colors.accent} />
+          <Text style={styles.shiftTitle}>SHIFT PLANNER</Text>
+        </View>
+        <View style={styles.shiftInputRow}>
+          <TextInput
+            value={shiftHours}
+            onChangeText={setShiftHours}
+            keyboardType="decimal-pad"
+            style={styles.shiftInput}
+            onEndEditing={handleApply}
+          />
+          <Text style={styles.shiftInputUnit}>h planned</Text>
+        </View>
+      </View>
+
+      <View style={styles.shiftProgressTrack}>
+        <View style={[styles.shiftProgressFill, { width: `${Math.min(100, pct * 100)}%`, backgroundColor: barColor }]} />
+        {pct >= 1 && (
+          <View style={styles.shiftOvertimeMark} />
+        )}
+      </View>
+
+      <View style={styles.shiftStats}>
+        <View style={styles.shiftStat}>
+          <Text style={styles.shiftStatValue}>{formatHours(elapsedHours)}</Text>
+          <Text style={styles.shiftStatLabel}>Elapsed</Text>
+        </View>
+        <View style={styles.shiftStat}>
+          <Text style={[styles.shiftStatValue, { color: barColor }]}>
+            {isOvertime ? `+${formatHours(elapsedHours - planned)}` : formatHours(remainingHours)}
+          </Text>
+          <Text style={styles.shiftStatLabel}>{isOvertime ? "Overtime" : "Remaining"}</Text>
+        </View>
+        <View style={styles.shiftStat}>
+          <Text style={styles.shiftStatValue}>{formatHours(planned)}</Text>
+          <Text style={styles.shiftStatLabel}>Planned</Text>
+        </View>
+      </View>
+
+      {(isWarning || isOvertime) && (
+        <View style={[styles.shiftAlert, { backgroundColor: barColor + "15", borderColor: barColor + "40" }]}>
+          <Ionicons name={isOvertime ? "warning" : "time"} size={14} color={barColor} />
+          <Text style={[styles.shiftAlertText, { color: barColor }]}>
+            {isOvertime
+              ? `You are ${formatHours(elapsedHours - planned)} over your planned shift — consider ending soon.`
+              : `Less than 1 hour remaining in your shift.`}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function SessionScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -303,7 +393,11 @@ export default function SessionScreen() {
       {/* Delivery counter */}
       <DeliveryCounter />
 
-      <Text style={[styles.sectionTitle, { marginTop: 4 }]}>DRIVING CONDITIONS</Text>
+      {/* Shift Planner */}
+      <Text style={[styles.sectionTitle, { marginTop: 4 }]}>SHIFT PLANNER</Text>
+      <ShiftPlanner />
+
+      <Text style={[styles.sectionTitle, { marginTop: 12 }]}>DRIVING CONDITIONS</Text>
 
       <SliderInput
         label="Total Driving Hours"
@@ -616,4 +710,111 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     flex: 1,
   },
+
+  // Shift Planner
+  shiftCard: {
+    backgroundColor: Colors.backgroundCard,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 14,
+  },
+  shiftHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  shiftTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  shiftTitle: {
+    fontFamily: "Rajdhani_600SemiBold",
+    fontSize: 12,
+    color: Colors.accent,
+    letterSpacing: 1.5,
+  },
+  shiftInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.backgroundElevated,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  shiftInput: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 18,
+    color: Colors.text,
+    width: 36,
+    textAlign: "center",
+  },
+  shiftInputUnit: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  shiftProgressTrack: {
+    height: 10,
+    backgroundColor: Colors.border,
+    borderRadius: 5,
+    overflow: "hidden",
+    position: "relative",
+  },
+  shiftProgressFill: {
+    height: "100%",
+    borderRadius: 5,
+  },
+  shiftOvertimeMark: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: Colors.danger,
+    borderRadius: 2,
+  },
+  shiftStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  shiftStat: {
+    alignItems: "center",
+    flex: 1,
+    gap: 2,
+  },
+  shiftStatValue: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 20,
+    color: Colors.text,
+    letterSpacing: -0.5,
+  },
+  shiftStatLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    color: Colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  shiftAlert: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+  },
+  shiftAlertText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 17,
+  },
 });
+
