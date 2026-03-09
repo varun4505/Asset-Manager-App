@@ -14,19 +14,13 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useRouter } from "expo-router";
 import { useFatigue } from "@/context/FatigueContext";
-
-const VEHICLES = [
-  { label: "Motorcycle", icon: "motorbike" },
-  { label: "Bicycle", icon: "bicycle" },
-  { label: "Car", icon: "car-side" },
-  { label: "Van", icon: "van-utility" },
-  { label: "Scooter", icon: "scooter" },
-];
+import { defaultAppConfig, resolveThemeColor, useAppConfig } from "@/lib/app-config";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile, updateProfile, safetyScore, currentStreak, history } = useFatigue();
+  const { data: appConfig = defaultAppConfig } = useAppConfig();
 
   const [name, setName] = useState(profile.name);
   const [company, setCompany] = useState(profile.company);
@@ -42,6 +36,13 @@ export default function ProfileScreen() {
 
   const safeColor =
     safetyScore >= 70 ? Colors.safe : safetyScore >= 40 ? Colors.caution : Colors.danger;
+
+  const vehicleOptions = appConfig.vehicleOptions.map((option) => ({
+    label: option.label,
+    value: option.value,
+    icon: option.icon,
+    color: resolveThemeColor(option.color),
+  }));
 
   const handleSave = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -164,14 +165,14 @@ export default function ProfileScreen() {
 
       <Text style={[styles.sectionTitle, { marginTop: 8 }]}>VEHICLE TYPE</Text>
       <View style={styles.vehicleGrid}>
-        {VEHICLES.map((v) => {
-          const active = vehicle === v.label;
+        {vehicleOptions.map((option) => {
+          const active = vehicle === option.value;
           return (
             <Pressable
-              key={v.label}
+              key={option.value}
               onPress={() => {
                 Haptics.selectionAsync();
-                setVehicle(v.label);
+                setVehicle(option.value);
               }}
               style={[
                 styles.vehicleBtn,
@@ -182,12 +183,12 @@ export default function ProfileScreen() {
               ]}
             >
               <MaterialCommunityIcons
-                name={v.icon as any}
+                name={option.icon as any}
                 size={24}
-                color={active ? Colors.accent : Colors.textMuted}
+                color={active ? option.color : Colors.textMuted}
               />
-              <Text style={[styles.vehicleLabel, active && { color: Colors.accent }]}>
-                {v.label}
+              <Text style={[styles.vehicleLabel, active && { color: option.color }]}>
+                {option.label}
               </Text>
             </Pressable>
           );

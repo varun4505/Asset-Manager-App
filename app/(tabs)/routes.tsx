@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -204,22 +204,23 @@ export default function RoutesScreen() {
 
   const rec = getBreakRecommendation(fatigueScore, fatigueLevel, session.minutesSinceBreak);
 
-  const generateNewRoute = () => {
+  const generateNewRoute = useCallback(async () => {
     setIsGenerating(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Run ACO in next tick so the UI can update first
-    setTimeout(() => {
+
+    try {
       const deliveries = Math.max(3, session.deliveriesCompleted || 6);
-      const r = runACO(deliveries, fatigueScore);
+      const r = await runACO(deliveries, fatigueScore);
       setRoute(r);
       setCompleted(new Set());
+    } finally {
       setIsGenerating(false);
-    }, 50);
-  };
+    }
+  }, [session.deliveriesCompleted, fatigueScore]);
 
   useEffect(() => {
-    generateNewRoute();
-  }, []);
+    void generateNewRoute();
+  }, [generateNewRoute]);
 
   const toggleComplete = (id: number) => {
     setCompleted((prev) => {

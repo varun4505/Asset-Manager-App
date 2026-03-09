@@ -15,7 +15,7 @@ function NativeTabLayout() {
         <Label>Dashboard</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="session">
-        <Icon sf={{ default: "timer", selected: "timer.fill" }} />
+        <Icon sf={{ default: "timer", selected: "timer.circle.fill" }} />
         <Label>Session</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="routes">

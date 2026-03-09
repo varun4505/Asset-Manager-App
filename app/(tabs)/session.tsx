@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useFatigue } from "@/context/FatigueContext";
 import { WeatherCondition, TimeOfDay } from "@/lib/fatigueEngine";
+import { defaultAppConfig, resolveThemeColor, useAppConfig } from "@/lib/app-config";
 
 function SliderInput({
   label,
@@ -131,57 +132,36 @@ function OptionPicker<T extends string>({
   );
 }
 
-const weatherOptions: { value: WeatherCondition; label: string; icon: string }[] = [
-  { value: "clear", label: "Clear", icon: "sunny-outline" },
-  { value: "cloudy", label: "Cloudy", icon: "cloudy-outline" },
-  { value: "rain", label: "Rain", icon: "rainy-outline" },
-  { value: "storm", label: "Storm", icon: "thunderstorm-outline" },
-];
-
-const timeOptions: { value: TimeOfDay; label: string; icon: string }[] = [
-  { value: "morning", label: "Morning", icon: "partly-sunny-outline" },
-  { value: "afternoon", label: "Afternoon", icon: "sunny" },
-  { value: "evening", label: "Evening", icon: "sunset-outline" },
-  { value: "night", label: "Night", icon: "moon-outline" },
-];
-
-function weatherColor(w: WeatherCondition) {
-  if (w === "storm") return Colors.danger;
-  if (w === "rain") return Colors.caution;
-  if (w === "cloudy") return Colors.textSecondary;
-  return Colors.safe;
-}
-
-function HungerPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const levels = [
-    { v: 1, label: "Full", icon: "happy-outline" },
-    { v: 2, label: "Ok", icon: "smile" },
-    { v: 3, label: "Hungry", icon: "sad-outline" },
-    { v: 4, label: "Very", icon: "sad" },
-    { v: 5, label: "Starving", icon: "alert-circle-outline" },
-  ];
+function HungerPicker({
+  value,
+  onChange,
+  options,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  options: { value: number; label: string; icon: string; color: string }[];
+}) {
   return (
     <View style={styles.optionCard}>
       <Text style={styles.sliderLabel}>Hunger Level</Text>
       <View style={styles.optionsRow}>
-        {levels.map((l) => {
-          const active = value === l.v;
-          const color =
-            l.v >= 4 ? Colors.danger : l.v === 3 ? Colors.caution : Colors.safe;
+        {options.map((option) => {
+          const active = value === option.value;
+          const color = resolveThemeColor(option.color);
           return (
             <Pressable
-              key={l.v}
+              key={option.value}
               onPress={() => {
                 Haptics.selectionAsync();
-                onChange(l.v);
+                onChange(option.value);
               }}
               style={[
                 styles.optionBtn,
                 active && { backgroundColor: color + "20", borderColor: color + "60" },
               ]}
             >
-              <Ionicons name={l.icon as any} size={16} color={active ? color : Colors.textMuted} />
-              <Text style={[styles.optionLabel, active && { color }]}>{l.label}</Text>
+              <Ionicons name={option.icon as any} size={16} color={active ? color : Colors.textMuted} />
+              <Text style={[styles.optionLabel, active && { color }]}>{option.label}</Text>
             </Pressable>
           );
         })}
@@ -203,7 +183,7 @@ function DeliveryCounter() {
     <View style={styles.counterCard}>
       <View style={styles.counterTop}>
         <View>
-          <Text style={styles.counterTitle}>TODAY'S DELIVERIES</Text>
+          <Text style={styles.counterTitle}>TODAY&apos;S DELIVERIES</Text>
           <Text style={styles.counterGoal}>Goal: {profile.dailyGoal} stops</Text>
         </View>
         <View style={styles.counterDisplay}>
@@ -336,7 +316,32 @@ export default function SessionScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const { session, updateSession, fatigueLevel, isSessionActive } = useFatigue();
+  const { data: appConfig = defaultAppConfig } = useAppConfig();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  const weatherOptions = appConfig.weatherOptions.map((option) => ({
+    value: option.value as WeatherCondition,
+    label: option.label,
+    icon: option.icon,
+    color: option.color,
+  }));
+  const timeOptions = appConfig.timeOptions.map((option) => ({
+    value: option.value as TimeOfDay,
+    label: option.label,
+    icon: option.icon,
+    color: option.color,
+  }));
+  const hungerOptions = appConfig.hungerOptions.map((option) => ({
+    value: option.value,
+    label: option.label,
+    icon: option.icon,
+    color: option.color,
+  }));
+  const weatherColorMap = Object.fromEntries(
+    weatherOptions.map((option) => [option.value, resolveThemeColor(option.color)]),
+  ) as Record<WeatherCondition, string>;
+  const weatherColor = (weather: WeatherCondition) =>
+    weatherColorMap[weather] ?? Colors.safe;
 
   const levelColor =
     fatigueLevel === "high"
@@ -438,6 +443,7 @@ export default function SessionScreen() {
       <HungerPicker
         value={session.hungerLevel}
         onChange={(v) => updateSession({ hungerLevel: v })}
+        options={hungerOptions}
       />
 
       <View style={styles.fuzzyNote}>

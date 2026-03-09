@@ -28,8 +28,9 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { useFatigue } from "@/context/FatigueContext";
-import { getBreakRecommendation, predictTimeToNextLevel, SAFETY_TIPS } from "@/lib/fatigueEngine";
+import { predictTimeToNextLevel } from "@/lib/fatigueEngine";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { defaultAppConfig, useAppConfig } from "@/lib/app-config";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -439,7 +440,7 @@ function SOSPanel() {
                   Session has been saved and flagged as emergency.
                 </Text>
                 <Pressable onPress={confirm} style={[styles.sosConfirmBtn, { width: "100%" }]}>
-                  <Text style={styles.sosConfirmText}>OK, I'll rest now</Text>
+                  <Text style={styles.sosConfirmText}>OK, I&apos;ll rest now</Text>
                 </Pressable>
               </>
             )}
@@ -556,6 +557,7 @@ function BreakdownBar({ label, value, color }: { label: string; value: number; c
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const { data: appConfig = defaultAppConfig } = useAppConfig();
   const {
 
     fatigueScore,
@@ -578,7 +580,11 @@ export default function DashboardScreen() {
       : Colors.safe;
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const tip = SAFETY_TIPS[fatigueLevel][Math.floor(Date.now() / 30000) % 5];
+  const tipsForLevel: string[] =
+    appConfig.safetyTips[fatigueLevel] ??
+    defaultAppConfig.safetyTips[fatigueLevel] ??
+    [];
+  const tip = tipsForLevel[Math.floor(Date.now() / 30000) % Math.max(1, tipsForLevel.length)];
 
   return (
     <ScrollView
@@ -735,41 +741,30 @@ export default function DashboardScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>RISK LEVEL GUIDE</Text>
         <View style={styles.riskCard}>
-          {[
-            {
-              range: "0–35",
-              level: "LOW",
-              color: Colors.safe,
-              desc: "Performing well. Stay hydrated.",
-            },
-            {
-              range: "36–65",
-              level: "MEDIUM",
-              color: Colors.caution,
-              desc: "Take a break soon. Reduce speed.",
-            },
-            {
-              range: "66–100",
-              level: "HIGH",
-              color: Colors.danger,
-              desc: "Stop immediately. High accident risk.",
-            },
-          ].map((item) => (
-            <View key={item.level} style={styles.riskRow}>
-              <View
-                style={[styles.riskDot, { backgroundColor: item.color }]}
-              />
-              <View style={styles.riskContent}>
-                <View style={styles.riskHeader}>
-                  <Text style={[styles.riskLevel, { color: item.color }]}>
-                    {item.level}
-                  </Text>
-                  <Text style={styles.riskRange}>{item.range}</Text>
+          {appConfig.riskGuide.map((item) => {
+            const color =
+              item.level === "high"
+                ? Colors.danger
+                : item.level === "medium"
+                ? Colors.caution
+                : Colors.safe;
+            return (
+              <View key={item.level + item.range} style={styles.riskRow}>
+                <View
+                  style={[styles.riskDot, { backgroundColor: color }]}
+                />
+                <View style={styles.riskContent}>
+                  <View style={styles.riskHeader}>
+                    <Text style={[styles.riskLevel, { color }]}>
+                      {item.level.toUpperCase()}
+                    </Text>
+                    <Text style={styles.riskRange}>{item.range}</Text>
+                  </View>
+                  <Text style={styles.riskDesc}>{item.description}</Text>
                 </View>
-                <Text style={styles.riskDesc}>{item.desc}</Text>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </View>
     </ScrollView>
@@ -1389,3 +1384,4 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 });
+

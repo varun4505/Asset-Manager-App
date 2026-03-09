@@ -1,6 +1,8 @@
+import "dotenv/config";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { storageMode } from "./storage";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -22,7 +24,7 @@ function setupCors(app: express.Application) {
     }
 
     if (process.env.REPLIT_DOMAINS) {
-      process.env.REPLIT_DOMAINS.split(",").forEach((d) => {
+      process.env.REPLIT_DOMAINS.split(",").forEach((d: string) => {
         origins.add(`https://${d.trim()}`);
       });
     }
@@ -239,5 +241,6 @@ function setupErrorHandler(app: express.Application) {
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`express server serving on port ${port}`);
+    log(`storage backend: ${storageMode}`);
   });
 })();
