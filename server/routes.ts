@@ -20,7 +20,7 @@ function getParam(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export function registerRoutes(app: Express): Server {
   // --- APP CONFIG ---
   app.get("/api/app-config", async (_req: Request, res: Response) => {
     const config = await storage.getAppConfig();

@@ -33,3 +33,18 @@ For mobile/web development, also run:
 ```bash
 npm run start
 ```
+
+## Vercel deployment
+
+Deploy from the project root with these settings:
+
+- Root directory: project root
+- Framework preset: Other
+- Install command: `npm install`
+- Build command: leave empty
+- Output directory: leave empty
+- Environment variables:
+  - `MONGODB_URI`
+  - `MONGODB_DB_NAME`
+
+The Vercel backend entrypoint is `server.ts` at the repo root.
