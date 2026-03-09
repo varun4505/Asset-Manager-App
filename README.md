@@ -39,7 +39,7 @@ npm run start
 Deploy from the project root with these settings:
 
 - Root directory: project root
-- Framework preset: Other
+- Framework preset: Express
 - Install command: `npm install`
 - Build command: leave empty
 - Output directory: leave empty
