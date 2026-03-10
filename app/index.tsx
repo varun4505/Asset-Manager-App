@@ -69,7 +69,7 @@ export default function RoleChooserScreen() {
         <Text style={styles.heroEyebrow}>SAFEROUTE AI</Text>
         <Text style={styles.heroTitle}>Choose your role</Text>
         <Text style={styles.heroBody}>
-          Select the module you want to open. Driver safety is the main project flow. Customer and Admin are lightweight demo modules.
+          Select the module you want to open. Driver handles fatigue safety, Customer handles order placement and tracking, and Admin manages logistics plus soft-computing controls.
         </Text>
       </View>
 
@@ -84,16 +84,16 @@ export default function RoleChooserScreen() {
         />
         <RoleCard
           title="Customer"
-          subtitle="DEMO MODULE"
-          description="Customer-side placeholder flow for the project submission."
+          subtitle="LIVE MODULE"
+          description="Create orders, estimate fees, track rider assignment, and view order history."
           icon="bag-handle-outline"
           color={Colors.safe}
           onPress={() => goTo("/(customer)")}
         />
         <RoleCard
           title="Admin"
-          subtitle="DEMO MODULE"
-          description="Admin-side placeholder for analytics and future monitoring tools."
+          subtitle="LIVE MODULE"
+          description="Manage orders, riders, zones, ASO simulations, and backend app configuration."
           icon="analytics-outline"
           color={Colors.caution}
           onPress={() => goTo("/(admin)")}
