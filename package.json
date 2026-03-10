@@ -12,7 +12,7 @@
     "server:prod": "cross-env NODE_ENV=production node server_dist/index.js",
     "db:push": "drizzle-kit push",
     "start": "npx expo start",
-    "build:apk": "npx eas build --platform android --profile preview",
+    "build:apk": "npx eas-cli build --platform android --profile preview",
     "lint": "npx expo lint",
     "lint:fix": "npx expo lint --fix"
   },
