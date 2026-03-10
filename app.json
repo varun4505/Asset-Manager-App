@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SafeRoute AI",
-    "slug": "saferoute-ai",
+    "slug": "saferoute-ai-varun4505",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -48,9 +48,9 @@
         "origin": "https://replit.com/"
       },
       "eas": {
-        "projectId": "722b2994-f6e7-4369-97dd-57dcd0e7ee82"
+        "projectId": "9f6fd158-5d66-454b-9cda-289ec03df8a9"
       }
     },
-    "owner": "saswatsubhang"
+    "owner": "varun4505"
   }
 }
