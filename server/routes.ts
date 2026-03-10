@@ -1,8 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import { storage } from "./storage";
-import { insertOrderSchema, insertRiderSchema, insertZoneSchema } from "@shared/schema";
-import { appConfigSchema, fatigueLevelSchema } from "@shared/soft-config";
+import { insertOrderSchema, insertRiderSchema, insertZoneSchema } from "../shared/schema";
+import { appConfigSchema, fatigueLevelSchema } from "../shared/soft-config";
 import {
   calculateFatigue,
   getBreakRecommendation,

@@ -4,7 +4,7 @@ import {
   type FatigueLevel,
   timeOfDaySchema,
   weatherConditionSchema,
-} from "@shared/soft-config";
+} from "../shared/soft-config";
 
 export const sessionInputsSchema = z.object({
   drivingHours: z.number().min(0).max(24),

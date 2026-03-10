@@ -39,7 +39,7 @@ npm run start
 Deploy from the project root with these settings:
 
 - Root directory: project root
-- Framework preset: Express
+- Framework preset: Other
 - Install command: `npm install`
 - Build command: leave empty
 - Output directory: leave empty
@@ -47,4 +47,4 @@ Deploy from the project root with these settings:
   - `MONGODB_URI`
   - `MONGODB_DB_NAME`
 
-The Vercel backend entrypoint is `server.ts` at the repo root.
+Vercel serves the backend through `api/index.ts` and `vercel.json` rewrites.

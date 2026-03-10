@@ -7,8 +7,8 @@ import {
   type InsertZone,
   type Order,
   type InsertOrder,
-} from "@shared/schema";
-import { defaultAppConfig, type AppConfig } from "@shared/soft-config";
+} from "../shared/schema";
+import { defaultAppConfig, type AppConfig } from "../shared/soft-config";
 import { randomUUID } from "crypto";
 import { MongoClient, type Db, type OptionalUnlessRequiredId } from "mongodb";
 
@@ -609,4 +609,3 @@ export const storage: IStorage = mongoUri
 if (storageMode === "memory") {
   console.warn("[storage] MONGODB_URI not set. Falling back to in-memory storage.");
 }
-
