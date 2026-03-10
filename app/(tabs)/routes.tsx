@@ -14,15 +14,12 @@ import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming,
   withSpring,
-  withRepeat,
   withSequence,
   FadeInDown,
 } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { useFatigue } from "@/context/FatigueContext";
-import { getBreakRecommendation } from "@/lib/fatigueEngine";
 import { runACO, ACORoute, DeliveryNode } from "@/lib/acoEngine";
 
 // ─── Break Timer ─────────────────────────────────────────────────────────────
@@ -195,14 +192,22 @@ function StopCard({
 export default function RoutesScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const { fatigueScore, fatigueLevel, session, activeBreak, startBreak, endBreak } =
+  const {
+    fatigueScore,
+    session,
+    activeBreak,
+    startBreak,
+    endBreak,
+    breakRecommendation,
+    softComputingSource,
+  } =
     useFatigue();
   const [route, setRoute] = useState<ACORoute | null>(null);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const rec = getBreakRecommendation(fatigueScore, fatigueLevel, session.minutesSinceBreak);
+  const rec = breakRecommendation;
 
   const generateNewRoute = useCallback(async () => {
     setIsGenerating(true);
@@ -249,6 +254,9 @@ export default function RoutesScreen() {
         <View>
           <Text style={styles.title}>Smart Route</Text>
           <Text style={styles.subtitle}>ACO-optimized delivery order</Text>
+          <Text style={styles.engineSource}>
+            {softComputingSource === "backend" ? "Break logic: deployed API" : "Break logic: local fallback"}
+          </Text>
         </View>
         <Pressable
           onPress={generateNewRoute}
@@ -424,6 +432,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 13,
     color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  engineSource: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.textMuted,
     marginTop: 2,
   },
   refreshBtn: {

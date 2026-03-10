@@ -80,11 +80,25 @@ export interface SessionRecord {
   earningsRate?: number;
 }
 
-export function calculateFatigue(inputs: SessionInputs): {
+export interface FatigueResult {
   score: number;
   level: FatigueLevel;
   breakdown: Record<string, number>;
-} {
+}
+
+export interface BreakRecommendation {
+  durationMinutes: number;
+  urgency: "low" | "moderate" | "soon" | "immediate";
+  message: string;
+}
+
+export interface PredictionResult {
+  minutesRemaining: number | null;
+  nextLevel: FatigueLevel;
+  currentScore: number;
+}
+
+export function calculateFatigue(inputs: SessionInputs): FatigueResult {
   const dh = fuzzifyDrivingHours(inputs.drivingHours);
   const del = fuzzifyDeliveries(inputs.deliveriesCompleted);
   const brk = fuzzifyBreakTime(inputs.minutesSinceBreak);
@@ -140,7 +154,7 @@ export function getBreakRecommendation(
   score: number,
   level: FatigueLevel,
   minutesSinceBreak: number,
-): { durationMinutes: number; urgency: string; message: string } {
+): BreakRecommendation {
   if (level === 'high') {
     return {
       durationMinutes: 30,

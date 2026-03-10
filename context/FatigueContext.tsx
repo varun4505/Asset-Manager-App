@@ -1,6 +1,23 @@
 import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { calculateFatigue, SessionInputs, FatigueLevel, WeatherCondition, TimeOfDay, SessionRecord } from '@/lib/fatigueEngine';
+import {
+  calculateFatigue,
+  getBreakRecommendation,
+  predictTimeToNextLevel,
+  type BreakRecommendation,
+  type FatigueResult,
+  type PredictionResult,
+  type SessionInputs,
+  type FatigueLevel,
+  type WeatherCondition,
+  type TimeOfDay,
+  type SessionRecord,
+} from '@/lib/fatigueEngine';
+import {
+  evaluateFatigueRemote,
+  getBreakRecommendationRemote,
+  predictFatigueRemote,
+} from '@/lib/soft-api';
 
 export type { SessionRecord };
 
@@ -19,6 +36,9 @@ interface FatigueContextValue {
   fatigueScore: number;
   fatigueLevel: FatigueLevel;
   breakdown: Record<string, number>;
+  fatiguePrediction: PredictionResult;
+  breakRecommendation: BreakRecommendation;
+  softComputingSource: "backend" | "local";
   history: SessionRecord[];
   saveSession: () => Promise<void>;
   saveSessionWithNotes: (notes: string, earningsRate?: number) => Promise<void>;
@@ -69,9 +89,22 @@ export function FatigueProvider({ children }: { children: ReactNode }) {
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [sessionElapsedSeconds, setSessionElapsedSeconds] = useState(0);
   const [profile, setProfile] = useState<DriverProfile>(DEFAULT_PROFILE);
+  const [fatigueResult, setFatigueResult] = useState<FatigueResult>(() => calculateFatigue(DEFAULT_SESSION));
+  const [fatiguePrediction, setFatiguePrediction] = useState<PredictionResult>(() =>
+    predictTimeToNextLevel(DEFAULT_SESSION),
+  );
+  const [breakRecommendation, setBreakRecommendation] = useState<BreakRecommendation>(() =>
+    getBreakRecommendation(
+      fatigueResult.score,
+      fatigueResult.level,
+      DEFAULT_SESSION.minutesSinceBreak,
+    ),
+  );
+  const [softComputingSource, setSoftComputingSource] = useState<"backend" | "local">("local");
 
   const sessionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const breakMinuteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const remoteRequestRef = useRef(0);
 
   useEffect(() => {
     const load = async () => {
@@ -131,10 +164,55 @@ export function FatigueProvider({ children }: { children: ReactNode }) {
     };
   }, [isSessionActive, activeBreak]);
 
-  const { score, level, breakdown } = useMemo(
-    () => calculateFatigue(session),
-    [session]
-  );
+  useEffect(() => {
+    const localFatigue = calculateFatigue(session);
+    const localPrediction = predictTimeToNextLevel(session);
+    const localBreak = getBreakRecommendation(
+      localFatigue.score,
+      localFatigue.level,
+      session.minutesSinceBreak,
+    );
+
+    setFatigueResult(localFatigue);
+    setFatiguePrediction(localPrediction);
+    setBreakRecommendation(localBreak);
+    setSoftComputingSource("local");
+
+    const requestId = remoteRequestRef.current + 1;
+    remoteRequestRef.current = requestId;
+
+    const timeout = setTimeout(async () => {
+      try {
+        const remoteFatigue = await evaluateFatigueRemote(session);
+        const [remotePrediction, remoteBreak] = await Promise.all([
+          predictFatigueRemote(session),
+          getBreakRecommendationRemote(
+            remoteFatigue.score,
+            remoteFatigue.level,
+            session.minutesSinceBreak,
+          ),
+        ]);
+
+        if (remoteRequestRef.current !== requestId) {
+          return;
+        }
+
+        setFatigueResult(remoteFatigue);
+        setFatiguePrediction(remotePrediction);
+        setBreakRecommendation(remoteBreak);
+        setSoftComputingSource("backend");
+      } catch {
+        if (remoteRequestRef.current !== requestId) {
+          return;
+        }
+        setSoftComputingSource("local");
+      }
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [session]);
+
+  const { score, level, breakdown } = fatigueResult;
 
   const safetyScore = useMemo(() => {
     if (history.length === 0) return 100;
@@ -237,6 +315,9 @@ export function FatigueProvider({ children }: { children: ReactNode }) {
     fatigueScore: score,
     fatigueLevel: level,
     breakdown,
+    fatiguePrediction,
+    breakRecommendation,
+    softComputingSource,
     history,
     saveSession,
     saveSessionWithNotes,
@@ -255,7 +336,7 @@ export function FatigueProvider({ children }: { children: ReactNode }) {
     currentStreak,
     profile,
     updateProfile,
-  }), [session, updateSession, score, level, breakdown, history, saveSession, saveSessionWithNotes, clearHistory, activeBreak, breakStartTime, startBreak, endBreak, isSessionActive, sessionStartTime, sessionElapsedSeconds, startSession, endSession, incrementDelivery, safetyScore, currentStreak, profile, updateProfile]);
+  }), [session, updateSession, score, level, breakdown, fatiguePrediction, breakRecommendation, softComputingSource, history, saveSession, saveSessionWithNotes, clearHistory, activeBreak, breakStartTime, startBreak, endBreak, isSessionActive, sessionStartTime, sessionElapsedSeconds, startSession, endSession, incrementDelivery, safetyScore, currentStreak, profile, updateProfile]);
 
   return <FatigueContext.Provider value={value}>{children}</FatigueContext.Provider>;
 }

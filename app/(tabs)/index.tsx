@@ -28,7 +28,6 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { useFatigue } from "@/context/FatigueContext";
-import { predictTimeToNextLevel } from "@/lib/fatigueEngine";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { defaultAppConfig, useAppConfig } from "@/lib/app-config";
 
@@ -308,16 +307,25 @@ function QuickActions() {
   );
 }
 
-function PredictionCard({ score, level, session }: { score: number; level: string; session: any }) {
-  const prediction = predictTimeToNextLevel(session);
-
+function PredictionCard({
+  level,
+  prediction,
+  source,
+}: {
+  level: string;
+  prediction: { minutesRemaining: number | null; nextLevel: string };
+  source: "backend" | "local";
+}) {
   if (level === "high") {
     return (
       <View style={[styles.predCard, { borderColor: Colors.danger + "40", backgroundColor: Colors.dangerDim }]}>
         <Ionicons name="warning" size={16} color={Colors.danger} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.predTitle, { color: Colors.danger }]}>HIGH FATIGUE ACTIVE</Text>
-          <Text style={styles.predBody}>Immediate rest required. Continuing is dangerous.</Text>
+          <Text style={styles.predBody}>
+            Immediate rest required. Continuing is dangerous.
+            {source === "backend" ? " Synced from deployed API." : ""}
+          </Text>
         </View>
       </View>
     );
@@ -329,7 +337,10 @@ function PredictionCard({ score, level, session }: { score: number; level: strin
         <Ionicons name="shield-checkmark" size={16} color={Colors.safe} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.predTitle, { color: Colors.safe }]}>SAFE TO CONTINUE</Text>
-          <Text style={styles.predBody}>No significant fatigue risk in the next 3 hours at this rate.</Text>
+          <Text style={styles.predBody}>
+            No significant fatigue risk in the next 3 hours at this rate.
+            {source === "backend" ? " Synced from deployed API." : ""}
+          </Text>
         </View>
       </View>
     );
@@ -570,6 +581,8 @@ export default function DashboardScreen() {
     safetyScore,
     currentStreak,
     profile,
+    fatiguePrediction,
+    softComputingSource,
   } = useFatigue();
 
   const levelColor =
@@ -630,7 +643,11 @@ export default function DashboardScreen() {
       <ArcGauge score={fatigueScore} level={fatigueLevel} />
 
       {/* Prediction */}
-      <PredictionCard score={fatigueScore} level={fatigueLevel} session={session} />
+      <PredictionCard
+        level={fatigueLevel}
+        prediction={fatiguePrediction}
+        source={softComputingSource}
+      />
 
       {/* Quick actions */}
       <QuickActions />
